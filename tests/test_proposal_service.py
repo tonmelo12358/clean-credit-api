@@ -1,12 +1,6 @@
 from decimal import Decimal
 from uuid import uuid4
-import os
-import sys
-
 import pytest
-
-# Ensure project root is importable
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 from app.models.proposal import Proposal, ProposalStatus
 from app.repositories.proposal_repository import InMemoryProposalRepository

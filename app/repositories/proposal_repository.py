@@ -47,6 +47,14 @@ class ProposalRepository:
         """
         raise NotImplementedError
 
+    def delete(self, id: UUID) -> bool:
+        """Remove a proposal from storage.
+
+        Returns:
+            True if removed, False if not found.
+        """
+        raise NotImplementedError
+
     def update_status(
         self,
         id: UUID,
@@ -107,6 +115,14 @@ class InMemoryProposalRepository(ProposalRepository):
         """
         with self._lock:
             return [deepcopy(p) for p in self._store.values()]
+
+    def delete(self, id: UUID) -> bool:
+        """Remove the proposal from memory."""
+        with self._lock:
+            if id in self._store:
+                self._store.pop(id)
+                return True
+            return False
 
     def update_status(
         self,

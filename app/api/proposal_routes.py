@@ -9,6 +9,8 @@ from pydantic import BaseModel, Field
 
 from app.models.proposal import Proposal
 from app.repositories.proposal_repository import InMemoryProposalRepository, ProposalRepository
+from app.adapters.stubs import SimpleFallbackStub
+from app.adapters.gemini_adapter import GeminiProvider # Importa o GeminiProvider
 from app.services.proposal_service import ProposalService
 
 
@@ -27,26 +29,8 @@ class ProposalCreate(BaseModel):
 # you should provide concrete implementations via dependency overrides in
 # `app/main.py` (or a DI container).
 _REPO: ProposalRepository = InMemoryProposalRepository()
-
-
-class _SimpleAI:
-    def request_score(self, proposal: Proposal, timeout: float = 2.0):
-        # Deterministic stub: simple heuristic to allow the service to run.
-        from decimal import Decimal
-
-        score = Decimal("0.75")
-        return score, {"source": "stub-ai"}
-
-
-class _SimpleFallback:
-    def compute(self, proposal: Proposal):
-        from decimal import Decimal
-
-        score = Decimal("0.45")
-        return score, {"source": "stub-fallback"}
-
-
-_SERVICE = ProposalService(_REPO, _SimpleAI(), _SimpleFallback())
+# Instanciamos o serviço com o GeminiProvider
+_SERVICE = ProposalService(_REPO, GeminiProvider(), SimpleFallbackStub())
 
 
 def get_proposal_service() -> ProposalService:
@@ -94,24 +78,7 @@ def list_proposals(repo: ProposalRepository = Depends(get_repository)) -> List[P
 
 @router.delete("/{proposal_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_proposal(proposal_id: UUID, repo: ProposalRepository = Depends(get_repository)) -> Response:
-    # The repository interface currently does not expose a delete method.
-    # For the in-memory implementation we remove the item directly.
-    if hasattr(repo, "_lock") and hasattr(repo, "_store"):
-        lock = getattr(repo, "_lock")
-        store = getattr(repo, "_store")
-        with lock:
-            if proposal_id not in store:
-                raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Proposal not found")
-            store.pop(proposal_id)
-        return Response(status_code=status.HTTP_204_NO_CONTENT)
-
-    # If repository provides an explicit delete method, prefer calling it.
-    delete_fn = getattr(repo, "delete", None)
-    if callable(delete_fn):
-        try:
-            delete_fn(proposal_id)
-            return Response(status_code=status.HTTP_204_NO_CONTENT)
-        except Exception:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Proposal not found")
-
-    raise HTTPException(status_code=status.HTTP_501_NOT_IMPLEMENTED, detail="Delete not supported by repository")
+    success = repo.delete(proposal_id)
+    if not success:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Proposal not found")
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
