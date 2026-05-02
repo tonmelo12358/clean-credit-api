@@ -131,26 +131,17 @@ class InMemoryProposalRepository(ProposalRepository):
         decision_note: Optional[str] = None,
         score: Optional[Decimal] = None,
     ) -> Proposal:
-        """Update status, optional decision note and score for a proposal.
-
-        Performs an in-place update of the stored entity and returns a deep copy
-        of the updated object.
-
-        Raises ValueError if the proposal does not exist.
-        """
+        """Update status and metadata for a proposal."""
         with self._lock:
             existing = self._store.get(id)
             if existing is None:
                 raise ValueError("Proposal not found")
 
-            # Atualizar campos permitidos
             existing.status = status
             if decision_note is not None:
                 existing.decision_note = decision_note
             if score is not None:
                 existing.score = score
+            
             existing.updated_at = datetime.now(timezone.utc)
-
-            # Persistir e retornar cópia
-            self._store[id] = deepcopy(existing)
             return deepcopy(existing)
