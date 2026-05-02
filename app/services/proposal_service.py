@@ -105,30 +105,17 @@ class ProposalService:
 
     def _decide(self, score: Decimal) -> ProposalStatus:
         """Map a numerical score to a `ProposalStatus`.
-
-        Decision thresholds are configurable via constructor.
         """
-        if score >= self._approve_threshold:
-            return ProposalStatus.aprovado
-        if score < self._reject_threshold:
-            return ProposalStatus.negado
+        if score >= self._approve_threshold: return ProposalStatus.aprovado
+        if score < self._reject_threshold: return ProposalStatus.negado
         return ProposalStatus.pendente
 
-    def _build_decision_note(self, source: str, metadata: Optional[dict]) -> str:
-        """Create a compact decision note for auditability.
+    def _build_decision_note(self, source: str, metadata: Any) -> str:
+        """Create a compact decision note for auditability."""
+        meta_content = ""
+        if isinstance(metadata, dict):
+            meta_content = metadata.get("reason") or metadata.get("model") or str(metadata)
+        else:
+            meta_content = str(metadata) if metadata else "no-metadata"
 
-        The note includes the source (ai|fallback) and a short metadata summary.
-        """
-        meta_summary = ""
-        try:
-            if metadata:
-                # prefer an explain key if available
-                if isinstance(metadata, dict):
-                    explain = metadata.get("explain") or metadata.get("explainability") or metadata
-                    meta_summary = str(explain)
-                else:
-                    meta_summary = str(metadata)
-        except Exception:  # defensive
-            meta_summary = "(metadata-unavailable)"
-
-        return f"source={source}; meta={meta_summary}"
+        return f"source={source}; meta={meta_content}"

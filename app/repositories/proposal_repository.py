@@ -90,14 +90,11 @@ class InMemoryProposalRepository(ProposalRepository):
         self._lock = Lock()
 
     def save(self, proposal: Proposal) -> Proposal:
-        """Save a proposal in the in-memory store.
-
-        Stores a deep copy to avoid external mutation of repository state.
-        """
+        """Save a proposal in the in-memory store."""
         with self._lock:
-            # Armazenar uma cópia para evitar efeitos colaterais fora do repositório
-            self._store[proposal.id] = deepcopy(proposal)
-            return deepcopy(self._store[proposal.id])
+            stored_proposal = deepcopy(proposal)
+            self._store[stored_proposal.id] = stored_proposal
+            return deepcopy(stored_proposal)
 
     def get_by_id(self, id: UUID) -> Optional[Proposal]:
         """Fetch a proposal by id from the in-memory store.
@@ -106,7 +103,7 @@ class InMemoryProposalRepository(ProposalRepository):
         """
         with self._lock:
             item = self._store.get(id)
-            return deepcopy(item) if item is not None else None
+            return deepcopy(item) if item else None
 
     def list_all(self) -> List[Proposal]:
         """List all proposals currently stored in memory.
