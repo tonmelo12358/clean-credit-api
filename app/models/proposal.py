@@ -7,7 +7,8 @@ from typing import Optional, Annotated
 from uuid import UUID, uuid4
 import re
 
-from pydantic import BaseModel, Field, ConfigDict, field_validator
+from pydantic import field_validator, ConfigDict
+from sqlmodel import SQLModel, Field, Column, Numeric
 
 
 def _clean_cpf(value: str) -> str:
@@ -38,16 +39,63 @@ class ProposalStatus(str, Enum):
     negado = "negado"
 
 
-class ProposalCreate(BaseModel):
-    """Dados para criação de proposta de crédito."""
+class Proposal(SQLModel, table=True):
+    """
+    Representa a Entidade de Domínio e o Model de Persistência para Propostas de Crédito.
+    Focado em resiliência e integridade de dados (Clean Architecture).
+    """
 
     model_config = ConfigDict(extra="forbid", validate_assignment=True, str_strip_whitespace=True)
 
-    cpf: Annotated[str, Field(..., description="CPF do solicitante (formatado ou somente dígitos)")]
-    full_name: Annotated[str, Field(..., min_length=3, description="Nome completo do solicitante")]
-    monthly_income: Annotated[Decimal, Field(..., gt=0, description="Renda mensal (decimal, > 0)")]
-    amount_requested: Annotated[Decimal, Field(..., gt=0, description="Valor solicitado (decimal, > 0)")]
+    id: UUID = Field(
+        default_factory=uuid4,
+        primary_key=True,
+        index=True,
+        description="Identificador único da proposta (PK)"
+    )
+    
+    cpf: str = Field(index=True, description="CPF do solicitante (apenas dígitos)")
+    full_name: str = Field(min_length=3, description="Nome completo do solicitante")
+    
+    # Uso de Numeric para garantir precisão decimal no SQLite/Postgres
+    monthly_income: Decimal = Field(
+        sa_column=Column(Numeric(precision=10, scale=2)),
+        description="Renda mensal informada"
+    )
+    
+    amount_requested: Decimal = Field(
+        sa_column=Column(Numeric(precision=10, scale=2)),
+        description="Valor total do empréstimo solicitado"
+    )
+    
+    status: ProposalStatus = Field(
+        default=ProposalStatus.pendente,
+        description="Status atual no motor de decisão"
+    )
+    
+    score: Decimal = Field(
+        default=Decimal("0"),
+        sa_column=Column(Numeric(precision=5, scale=4)),
+        description="Score calculado (0.0000 a 1.0000)"
+    )
 
+    created_at: datetime = Field(
+        default_factory=lambda: datetime.now(timezone.utc),
+        description="Timestamp de criação (UTC)"
+    )
+    
+    updated_at: Optional[datetime] = Field(
+        default=None,
+        description="Timestamp da última alteração de status"
+    )
+    
+    decision_note: Optional[str] = Field(
+        default=None,
+        max_length=1024,
+        description="Justificativa da decisão (IA ou Fallback)"
+    )
+
+    # Validações de Domínio (Pydantic v2)
     @field_validator("cpf")
     @classmethod
     def validate_cpf(cls, v: str) -> str:
@@ -55,33 +103,9 @@ class ProposalCreate(BaseModel):
             raise ValueError("CPF inválido")
         return _clean_cpf(v)
 
-
-class ProposalUpdate(BaseModel):
-    """Atualizações parciais permitidas na proposta."""
-
-    model_config = ConfigDict(extra="forbid", validate_assignment=True, str_strip_whitespace=True)
-
-    status: Optional[ProposalStatus] = Field(None, description="Novo status da proposta")
-    decision_note: Optional[Annotated[str, Field(max_length=1024, description="Observação/nota da decisão")]] = None
-
-
-class ProposalOut(BaseModel):
-    """Representação pública da proposta retornada pela API."""
-
-    model_config = ConfigDict(extra="forbid", validate_assignment=True, str_strip_whitespace=True)
-
-    id: UUID = Field(default_factory=uuid4, description="Identificador único (UUID)")
-    cpf: Annotated[str, Field(..., description="CPF somente dígitos (para auditoria)")]
-    full_name: str
-    monthly_income: Decimal
-    amount_requested: Decimal
-    status: ProposalStatus = Field(..., description="Status atual da proposta")
-    score: Annotated[Decimal, Field(..., ge=0, le=1, description="Score normalizado entre 0 e 1")]
-    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
-    updated_at: Optional[datetime] = None
-    decision_note: Optional[str] = None
-
-    @field_validator("cpf")
+    @field_validator("monthly_income", "amount_requested")
     @classmethod
-    def normalize_cpf(cls, v: str) -> str:
-        return _clean_cpf(v)
+    def validate_positive_values(cls, v: Decimal) -> Decimal:
+        if v <= 0:
+            raise ValueError("O valor deve ser maior que zero")
+        return v
