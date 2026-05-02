@@ -1,0 +1,108 @@
+# --- Ambiente Python ---
+# Arquivos compilados e caches
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Arquivos gerados por C-extensions
+*.so
+
+# --- Ambiente virtual ---
+# Virtualenvs locais comuns
+venv/
+env/
+ENV/
+.venv/
+venv.bak/
+env.bak/
+
+# Pyenv
+.python-version
+
+# --- Variáveis de ambiente / segredos locais ---
+.env
+.env.* 
+*.env
+
+# --- Cache, testes e cobertura ---
+# Pytest
+.pytest_cache/
+# Coverage
+htmlcov/
+.coverage
+.coverage.*
+# Cache geral
+.cache/
+nosetests.xml
+coverage.xml
+test-reports/
+
+# --- Build / Distribuição / Dependências ---
+build/
+dist/
+*.egg-info/
+.eggs/
+pip-wheel-metadata/
+wheels/
+
+# --- Artefatos e bancos locais ---
+# DBs locais (SQLite, etc.)
+*.sqlite
+*.sqlite3
+*.db
+# Arquivos de migração gerados localmente
+alembic/versions/*.pyc
+
+# --- Logs ---
+*.log
+logs/
+*.out
+
+# --- Ferramentas de checagem / caches de lint/typecheck ---
+.mypy_cache/
+.dmypy.json
+.pyre/
+.pytype/
+.pyrightcache/
+.pylint.d/
+.ruff_cache/
+
+# --- Configurações do editor / IDE (locais) ---
+.vscode/
+.idea/
+*.sublime-workspace
+*.sublime-project
+# JetBrains local history
+.idea/**/workspace.xml
+.idea/**/tasks.xml
+
+# --- Sistemas ---
+# macOS
+.DS_Store
+# Windows
+Thumbs.db
+desktop.ini
+
+# --- Outros ---
+# Arquivos temporários e lockfiles
+*.swp
+*~ 
+*.tmp
+*.bak
+# Build outputs de containers/infra locais
+docker-compose.override.yml
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+# Arquivos de pacotes Python instalados localmente
+*.egg
+*.egg-info/
+
+# --- Ferramentas específicas (opcional) ---
+# Poetry
+poetry.lock
+# Pipenv
+Pipfile.lock
+
+# Fim.
