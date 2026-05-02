@@ -29,7 +29,7 @@ Público-alvo: avaliadores acadêmicos, arquitetos corporativos e times técnico
 - Modelagem / Validação: Pydantic / SQLModel (ou SQLAlchemy + Pydantic)
 - Persistência: PostgreSQL (produção) / SQLite (dev)
 - Migrações: Alembic
-- IA: integração via provider (ex.: OpenAI) com abstração em camada de Provider
+- IA: Integração com **Google Gemini** (gemini-1.5-flash) via camada de Adapters
 - Testes / Qualidade: pytest, coverage, mypy, ruff, black
 - Observabilidade: Prometheus + Grafana (opcional), Sentry (opcional)
 - Contêineres: Docker, docker-compose
@@ -61,8 +61,8 @@ graph TD
   C --> D[Domain: Use Cases]
   D --> E[Repository Interface]
   E --> F[Repository Implementation (Postgres)]
-  C --> G[AI Provider Interface]
-  G --> H[AI Provider (OpenAI)]
+  C --> G[AI Provider Port]
+  G --> H[Gemini Adapter]
   C --> I[Fallback Rules Engine]
   style I fill:#f9f,stroke:#333,stroke-width:1px
 ```

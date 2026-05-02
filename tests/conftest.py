@@ -5,3 +5,6 @@ import sys
 root_path = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 if root_path not in sys.path:
     sys.path.insert(0, root_path)
+
+# Global test constants
+VALID_CPF = "52998224725"

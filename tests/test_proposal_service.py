@@ -1,84 +1,134 @@
 from decimal import Decimal
 from uuid import uuid4
+from typing import Tuple
 import pytest
+from pytest_mock import MockerFixture
 
 from app.models.proposal import Proposal, ProposalStatus
 from app.repositories.proposal_repository import InMemoryProposalRepository
 from app.services.proposal_service import ProposalService
-
-
-VALID_CPF = "52998224725"
-
+from tests.conftest import VALID_CPF
 
 def make_proposal(**overrides) -> Proposal:
     data = {
         "cpf": VALID_CPF,
-        "full_name": "Service Test",
-        "monthly_income": Decimal("2000.00"),
-        "amount_requested": Decimal("1000.00"),
+        "full_name": "Clean Code Architect",
+        "monthly_income": Decimal("5000.00"),
+        "amount_requested": Decimal("2000.00"),
     }
     data.update(overrides)
     return Proposal(**data)
 
+@pytest.fixture
+def repository():
+    return InMemoryProposalRepository()
 
-class FakeAI:
-    def __init__(self, score: Decimal = Decimal("0.8"), metadata: dict | None = None, raise_exc: bool = False):
-        self.score = Decimal(score)
-        self.metadata = metadata or {"model": "fake"}
-        self.raise_exc = raise_exc
+@pytest.fixture
+def mock_ai(mocker: MockerFixture):
+    return mocker.Mock()
 
-    def request_score(self, proposal: Proposal, timeout: float = 2.0):
-        if self.raise_exc:
-            raise RuntimeError("AI provider error")
-        return self.score, self.metadata
+@pytest.fixture
+def mock_fallback(mocker: MockerFixture):
+    return mocker.Mock()
 
+@pytest.fixture
+def service(repository, mock_ai, mock_fallback):
+    return ProposalService(
+        repository=repository,
+        ai_provider=mock_ai,
+        fallback=mock_fallback,
+        approve_threshold=Decimal("0.7"),
+        reject_threshold=Decimal("0.4")
+    )
 
-class FakeFallback:
-    def __init__(self, score: Decimal = Decimal("0.3"), metadata: dict | None = None):
-        self.score = Decimal(score)
-        self.metadata = metadata or {"rules": "simple"}
+def test_should_successfully_process_proposal_with_high_ai_score(service, mock_ai) -> None:
+    # Arrange
+    proposal = make_proposal()
+    mock_ai.request_score.return_value = (Decimal("0.85"), {"model": "gemini-1.5"})
 
-    def compute(self, proposal: Proposal):
-        return self.score, self.metadata
+    # Act
+    result = service.process(proposal)
 
+    # Assert
+    assert result.status == ProposalStatus.aprovado
+    assert result.score == Decimal("0.85")
+    assert "source=ai" in result.decision_note
+    mock_ai.request_score.assert_called_once()
 
-def test_process_with_ai_success() -> None:
-    repo = InMemoryProposalRepository()
-    ai = FakeAI(score=Decimal("0.85"))
-    fb = FakeFallback()
-    svc = ProposalService(repo, ai, fb)
+def test_should_reject_proposal_with_low_ai_score(service, mock_ai) -> None:
+    # Arrange
+    proposal = make_proposal()
+    mock_ai.request_score.return_value = (Decimal("0.20"), {"model": "gemini-1.5"})
 
-    p = make_proposal()
-    updated = svc.process(p)
+    # Act
+    result = service.process(proposal)
 
-    assert updated.score == Decimal("0.85")
+    # Assert
+    assert result.status == ProposalStatus.negado
+    assert result.score == Decimal("0.20")
+
+def test_should_trigger_fallback_on_ai_provider_failure(service, mock_ai, mock_fallback) -> None:
+    # Arrange
+    proposal = make_proposal()
+    mock_ai.request_score.side_effect = Exception("Service Unavailable")
+    mock_fallback.compute.return_value = (Decimal("0.55"), {"rule": "income_check"})
+
+    # Act
+    result = service.process(proposal)
+
+    # Assert
+    assert result.status == ProposalStatus.pendente  # 0.55 is between 0.4 and 0.7
+    assert result.score == Decimal("0.55")
+    assert "source=fallback" in result.decision_note
+    mock_fallback.compute.assert_called_once()
+
+def test_should_retrieve_proposal_by_id(service, repository) -> None:
+    # Arrange
+    p = repository.save(make_proposal())
+    
+    # Act
+    fetched = service.get_proposal(p.id)
+
+    # Assert
+    assert fetched is not None
+    assert fetched.id == p.id
+
+def test_should_list_all_proposals(service, repository) -> None:
+    # Arrange
+    repository.save(make_proposal(cpf="52998224725"))
+    repository.save(make_proposal(cpf="01413813130"))
+
+    # Act
+    all_proposals = service.list_proposals()
+
+    # Assert
+    assert len(all_proposals) == 2
+
+def test_should_update_proposal_status(service, repository) -> None:
+    # Arrange
+    p = repository.save(make_proposal())
+    
+    # Act
+    updated = service.update_proposal_status(
+        p.id, 
+        ProposalStatus.aprovado, 
+        note="Manual Review", 
+        score=Decimal("0.99")
+    )
+
+    # Assert
     assert updated.status == ProposalStatus.aprovado
-    assert "source=ai" in (updated.decision_note or "")
+    assert updated.score == Decimal("0.99")
+    assert updated.decision_note == "Manual Review"
 
+def test_should_raise_error_when_updating_non_existent_proposal(service) -> None:
+    # Act & Assert
+    with pytest.raises(ValueError, match="Proposal not found"):
+        service.update_proposal_status(uuid4(), ProposalStatus.negado)
 
-def test_process_fallback_on_ai_failure() -> None:
-    repo = InMemoryProposalRepository()
-    ai = FakeAI(raise_exc=True)
-    fb = FakeFallback(score=Decimal("0.35"))
-    svc = ProposalService(repo, ai, fb)
+def test_should_return_none_for_non_existent_id(service) -> None:
+    # Act
+    result = service.get_proposal(uuid4())
 
-    p = make_proposal()
-    updated = svc.process(p)
-
-    assert updated.score == Decimal("0.35")
-    assert updated.status == ProposalStatus.negado
-    assert "source=fallback" in (updated.decision_note or "")
-
-
-def test_process_produces_pending_when_between_thresholds() -> None:
-    repo = InMemoryProposalRepository()
-    ai = FakeAI(score=Decimal("0.5"))
-    fb = FakeFallback()
-    svc = ProposalService(repo, ai, fb, approve_threshold=Decimal("0.7"), reject_threshold=Decimal("0.4"))
-
-    p = make_proposal()
-    updated = svc.process(p)
-
-    assert updated.score == Decimal("0.5")
-    assert updated.status == ProposalStatus.pendente
-    assert "source=ai" in (updated.decision_note or "")
+    # Assert
+    assert result is None

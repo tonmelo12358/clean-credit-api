@@ -4,9 +4,7 @@ import pytest
 
 from app.models.proposal import Proposal, ProposalStatus
 from app.repositories.proposal_repository import InMemoryProposalRepository
-
-
-VALID_CPF = "52998224725"
+from tests.conftest import VALID_CPF
 
 
 def make_proposal(**overrides) -> Proposal:

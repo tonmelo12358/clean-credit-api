@@ -1,17 +1,13 @@
 fastapi
 uvicorn[standard]
-pydantic==2.13.3
+pydantic>=2.0.0
 sqlmodel
 alembic
 python-dotenv
 httpx
 pytest
+pytest-mock
 coverage
 black
 ruff
 mypy
-
-# Optional / recommended
-sentry-sdk
-sqlalchemy
-psycopg2-binary
