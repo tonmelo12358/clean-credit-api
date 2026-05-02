@@ -3,11 +3,11 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from decimal import Decimal
 from enum import Enum
-from typing import Optional, Annotated
+from typing import Optional
 from uuid import UUID, uuid4
 import re
 
-from pydantic import field_validator, ConfigDict
+from pydantic import field_validator
 from sqlmodel import SQLModel, Field, Column, Numeric
 
 
@@ -45,7 +45,6 @@ class Proposal(SQLModel, table=True):
     Focado em resiliência e integridade de dados (Clean Architecture).
     """
 
-    model_config = ConfigDict(extra="forbid", validate_assignment=True, str_strip_whitespace=True)
 
     id: UUID = Field(
         default_factory=uuid4,
