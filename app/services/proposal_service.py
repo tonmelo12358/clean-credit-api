@@ -2,7 +2,8 @@ from __future__ import annotations
 
 import logging
 from decimal import Decimal
-from typing import Optional, Protocol, Tuple
+from typing import Any, List, Optional, Protocol, Tuple
+from uuid import UUID
 
 from app.models.proposal import Proposal, ProposalStatus
 from app.repositories.proposal_repository import ProposalRepository
@@ -60,37 +61,47 @@ class ProposalService:
 
         Returns the updated Proposal instance as stored in the repository.
         """
-        # Persist initial proposal (ensure it has an id and created_at)
         saved = self._repo.save(proposal)
 
-        score: Decimal
-        metadata: dict
-        source: str
-
-        # Try AI Provider
-        try:
-            logger.debug("Requesting score from AI provider for proposal %s", saved.id)
-            score, metadata = self._ai.request_score(saved, timeout=self._ai_timeout)
-            source = "ai"
-            logger.debug("AI score=%s metadata=%s", score, metadata)
-        except Exception as exc:  # pragma: no cover - provider failures are expected
-            logger.warning("AI provider failed for proposal %s: %s", saved.id, exc)
-            score, metadata = self._fallback.compute(saved)
-            source = "fallback"
-            logger.debug("Fallback score=%s metadata=%s", score, metadata)
-
-        # Determine decision
-        decision = self._decide(score)
-
-        # Compose decision note
-        decision_note = self._build_decision_note(source, metadata)
-
-        # Persist final result
-        updated = self._repo.update_status(
-            saved.id, decision, decision_note=decision_note, score=score
+        score, metadata, source = self._get_score_from_providers(saved)
+        status = self._decide(score)
+        
+        return self._repo.update_status(
+            id=saved.id,
+            status=status,
+            decision_note=self._build_decision_note(source, metadata),
+            score=score
         )
 
-        return updated
+    def _get_score_from_providers(self, proposal: Proposal) -> Tuple[Decimal, dict, str]:
+        """Handles AI provider call with safe fallback logic."""
+        try:
+            logger.debug("Requesting AI score for proposal %s", proposal.id)
+            score, metadata = self._ai.request_score(proposal, timeout=self._ai_timeout)
+            logger.debug("AI score received: %s", score)
+            return score, metadata, "ai"
+        except Exception as exc:
+            logger.warning("AI provider failed for %s, triggering fallback: %s", proposal.id, exc)
+            score, metadata = self._fallback.compute(proposal)
+            return score, metadata, "fallback"
+
+    def get_proposal(self, proposal_id: UUID) -> Optional[Proposal]:
+        """Retrieve a single proposal by ID."""
+        return self._repo.get_by_id(proposal_id)
+
+    def list_proposals(self) -> List[Proposal]:
+        """List all proposals."""
+        return self._repo.list_all()
+
+    def update_proposal_status(
+        self,
+        proposal_id: UUID,
+        status: ProposalStatus,
+        note: Optional[str] = None,
+        score: Optional[Decimal] = None
+    ) -> Proposal:
+        """Manually update a proposal status."""
+        return self._repo.update_status(proposal_id, status, decision_note=note, score=score)
 
     def _decide(self, score: Decimal) -> ProposalStatus:
         """Map a numerical score to a `ProposalStatus`.
