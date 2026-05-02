@@ -1,6 +1,7 @@
 from datetime import datetime, timezone
 
 from fastapi import FastAPI
+from app.api.proposal_routes import router as proposal_router
 from pydantic import BaseModel
 
 
@@ -10,6 +11,9 @@ class HealthResponse(BaseModel):
 
 
 app = FastAPI(title="CleanCredit API")
+
+# Incluir roteadores da API
+app.include_router(proposal_router)
 
 
 @app.get("/health", response_model=HealthResponse, tags=["Health"])
