@@ -1,0 +1,17 @@
+fastapi
+uvicorn[standard]
+pydantic
+sqlmodel
+alembic
+python-dotenv
+httpx
+pytest
+coverage
+black
+ruff
+mypy
+
+# Optional / recommended
+sentry-sdk
+sqlalchemy
+psycopg2-binary
