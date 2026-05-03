@@ -56,15 +56,29 @@ Exemplo de diagrama (Mermaid):
 
 ```mermaid
 graph TD
-  A[Client HTTP] -->|REST| B(API Layer)
-  B --> C[Service Layer]
-  C --> D[Domain: Use Cases]
-  D --> E[Repository Interface]
-  E --> F[Repository Implementation (Postgres)]
-  C --> G[AI Provider Port]
-  G --> H[Gemini Adapter]
-  C --> I[Fallback Rules Engine]
-  style I fill:#f9f,stroke:#333,stroke-width:1px
+  %% Camada de Entrada
+  Client[Client HTTP / Postman] -->|JSON/REST| API[API Layer: Proposal Routes]
+
+  %% Camada de Aplicação
+  API --> Service[Service Layer: Proposal Service]
+
+  %% Orquestração e Lógica
+  Service --> Domain[Domain: Proposal Model]
+  
+  subgraph "Estratégia de Resiliência"
+    Service --> AI_Port{AI Provider Port}
+    AI_Port -->|Sucesso| Gemini[Gemini Adapter: 1.5 Flash]
+    AI_Port -->|Erro 400/Timeout| Fallback[Fallback: Local Rules Engine][cite: 1]
+  end
+
+  %% Persistência
+  Service --> Repo_Int[Repository Interface][cite: 1]
+  Repo_Int --> Repo_Imp[(Repository: SQLite/SQLModel)][cite: 1]
+
+  %% Estilização para destaque arquitetural
+  style Fallback fill:#fff4dd,stroke:#d4a017,stroke-width:2px[cite: 1]
+  style Gemini fill:#e1f5fe,stroke:#01579b,stroke-width:2px[cite: 1]
+  style Domain fill:#f3e5f5,stroke:#7b1fa2,stroke-width:1px[cite: 1]
 ```
 
 Sequência (consulta de score):
@@ -337,7 +351,32 @@ graph LR
 
 ## Licença
 
-- Escolha uma licença compatível com o objetivo (ex.: MIT para portfólio; consulte política institucional para uso em pesquisa).
+Este projeto está licenciado sob a **Licença MIT** - veja o arquivo [LICENSE.md](LICENSE.md) para mais detalhes.
+
+---
+
+## Jornada de Construção e Relato de Uso de IA
+
+### 🧠 Visão Geral e Estratégia
+Embora minha atuação principal seja na camada de arquitetura estratégica e não no desenvolvimento profissional cotidiano, utilizei este projeto como um laboratório de engenharia assistida por IA. A inteligência artificial foi a parceira consultiva desde a concepção, ajudando a definir o escopo do MVP e a estruturação dos padrões de projeto (Clean Architecture).
+
+### 🛠 Desafios Técnicos e Gestão de Mudanças
+O desenvolvimento não foi isento de fricções, o que proporcionou lições valiosas sobre interoperabilidade de ferramentas:
+
+**Transição de Ferramentas**: Iniciei o projeto utilizando o GitHub Copilot. Com o esgotamento da cota gratuita, realizei a migração para o Gemini Code Assist. Esta mudança exigiu adaptação, pois o Code Assist possui características distintas (como a ausência de execução direta de comandos no terminal via IDE), o que gerou retrabalho na reestruturação de trechos do projeto para garantir a compatibilidade com o novo fluxo de assistência.  
+
+**Integração de Infraestrutura**: Enfrentei desafios significativos na configuração do GeminiProvider. Problemas na estrutura inicial do payload e na gestão de versões da API (v1 vs v1beta) causaram erros de comunicação (400/404), exigindo um debug profundo na camada de adaptadores para garantir que a API Key fosse consumida de forma segura e funcional.  
+
+### 📈 Eficiência e Resultados
+O ganho de produtividade foi o indicador mais expressivo deste projeto:Aceleração de Entrega: Em projetos acadêmicos anteriores de complexidade similar, o ciclo de desenvolvimento médio foi de 7 dias.Otimização: Com o auxílio da IA e uma arquitetura bem definida, finalizei esta aplicação — que possui maior robustez técnica e camadas de resiliência — em apenas 3 dias, representando um ganho de eficiência superior a 50%.  
+### 🎓 Lições Aprendidas
+**Resiliência Arquitetural**: O padrão de fallback (motor de regras local) provou ser essencial. Mesmo com falhas na IA, o sistema manteve a disponibilidade.  
+
+**Modularidade**: Separar estritamente a lógica de negócio das integrações externas facilitou a correção de bugs de infraestrutura sem afetar o domínio.
+
+**Higiene de Segurança**: A gestão rigorosa de segredos (.env) é inegociável, especialmente em ambientes assistidos, onde a agilidade não pode comprometer a governança.  
+### ⏭ Próximos Passos
+Pretendo evoluir este ecossistema explorando a manipulação de mídias de broadcast e streaming via IA. O objetivo é aplicar os padrões de arquitetura corporativa aqui estabelecidos em fluxos de processamento de metadados e orquestração de assets em tempo real.
 
 ---
 
