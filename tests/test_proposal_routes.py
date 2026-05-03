@@ -106,3 +106,25 @@ def test_should_delete_proposal_successfully(client: TestClient) -> None:
 def test_should_return_404_when_deleting_non_existent_proposal(client: TestClient) -> None:
     response = client.delete(f"/proposals/{uuid4()}")
     assert response.status_code == 404
+
+
+def test_should_update_proposal_status_manually(client: TestClient) -> None:
+    # Arrange: Create a proposal that stays pending (using a lower income to trigger fallback pending)
+    payload = {"cpf": "52998224725", "full_name": "Review Test", "monthly_income": 3000, "amount_requested": 1000}
+    created = client.post("/proposals/", json=payload).json()
+    proposal_id = created["id"]
+
+    # Act: Manually approve it via PATCH
+    update_payload = {
+        "status": "aprovado",
+        "note": "Aprovado após revisão de documentos extras",
+        "score": 0.95
+    }
+    response = client.patch(f"/proposals/{proposal_id}/status", json=update_payload)
+
+    # Assert
+    assert response.status_code == 200
+    data = response.json()
+    assert data["status"] == "aprovado"
+    assert data["decision_note"] == "Aprovado após revisão de documentos extras"
+    assert float(data["score"]) == 0.95
