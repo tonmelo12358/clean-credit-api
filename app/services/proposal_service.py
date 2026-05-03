@@ -80,8 +80,8 @@ class ProposalService:
             score, metadata = self._ai.request_score(proposal, timeout=self._ai_timeout)
             logger.debug("AI score received: %s", score)
             return score, metadata, "ai"
-        except Exception as exc:
-            logger.warning("AI provider failed for %s, triggering fallback: %s", proposal.id, exc)
+        except Exception:
+            logger.warning("AI provider failed for %s, triggering fallback", proposal.id, exc_info=True)
             score, metadata = self._fallback.compute(proposal)
             return score, metadata, "fallback"
 
