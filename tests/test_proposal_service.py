@@ -1,6 +1,5 @@
 from decimal import Decimal
 from uuid import uuid4
-from typing import Tuple
 import pytest
 from pytest_mock import MockerFixture
 

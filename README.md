@@ -285,28 +285,24 @@ curl -X POST http://localhost:8001/proposals/ \
   -d '{
     "cpf": "52998224725",
     "full_name": "Wellington Melo",
-    "monthly_income": 8500.00,
-    "amount_requested": 15000.00
+    "monthly_income": 5000,
+    "amount_requested": 1550
   }'
 ```
 
 Resposta esperada (exemplo):
 ```
 {
-  "score": 0.72,
-  "decision": "manual_review",
-  "explainability": {
-    "factors": [
-      {"reason": "income", "impact": 0.3},
-      {"reason": "age", "impact": -0.1}
-    ],
-    "source": "ai" // ou "fallback"
-  },
-  "metadata": {
-    "model_version": "gpt-x.y",
-    "request_id": "uuid",
-    "timestamp": "..."
-  }
+  "cpf": "52998224725",
+  "full_name": "string",
+  "monthly_income": "5000",
+  "amount_requested": "1550",
+  "id": "7dd70f37-5c04-483d-a531-640083911ea6",
+  "status": "aprovado",
+  "score": "0.85",
+  "created_at": "2026-05-03T13:53:56.353109Z",
+  "updated_at": "2026-05-03T13:53:58.150176Z",
+  "decision_note": "source=ai; meta=O valor da parcela representa aproximadamente 31% da renda mensal, o que indica um comprometimento de renda dentro de padrões aceitáveis para concessão de crédito, apresentando risco baixo a moderado."
 }
 ```
 

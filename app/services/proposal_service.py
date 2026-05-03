@@ -106,8 +106,10 @@ class ProposalService:
     def _decide(self, score: Decimal) -> ProposalStatus:
         """Map a numerical score to a `ProposalStatus`.
         """
-        if score >= self._approve_threshold: return ProposalStatus.aprovado
-        if score < self._reject_threshold: return ProposalStatus.negado
+        if score >= self._approve_threshold: 
+            return ProposalStatus.aprovado
+        if score < self._reject_threshold: 
+            return ProposalStatus.negado
         return ProposalStatus.pendente
 
     def _build_decision_note(self, source: str, metadata: Any) -> str:
