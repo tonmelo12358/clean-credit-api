@@ -21,7 +21,6 @@ env.bak/
 
 # --- Variáveis de ambiente / segredos locais ---
 .env
-.env.* 
 *.env
 
 # --- Cache, testes e cobertura ---
