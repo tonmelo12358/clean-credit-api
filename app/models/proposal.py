@@ -11,12 +11,12 @@ from pydantic import field_validator
 from sqlmodel import SQLModel, Field, Column, Numeric
 
 
-def _clean_cpf(value: str) -> str:
+def clean_cpf(value: str) -> str:
     return re.sub(r"\D", "", value or "")
 
 
-def _is_valid_cpf(raw: str) -> bool:
-    s = _clean_cpf(raw)
+def is_valid_cpf(raw: str) -> bool:
+    s = clean_cpf(raw)
     if len(s) != 11:
         return False
     if s == s[0] * 11:
@@ -98,9 +98,9 @@ class Proposal(SQLModel, table=True):
     @field_validator("cpf")
     @classmethod
     def validate_cpf(cls, v: str) -> str:
-        if not _is_valid_cpf(v):
-            raise ValueError("CPF inválido")
-        return _clean_cpf(v)
+        if not is_valid_cpf(v):
+            raise ValueError(f"O CPF '{v}' não é um número válido de acordo com o algoritmo oficial.")
+        return clean_cpf(v)
 
     @field_validator("monthly_income", "amount_requested")
     @classmethod
