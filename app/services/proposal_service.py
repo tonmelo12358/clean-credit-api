@@ -76,9 +76,9 @@ class ProposalService:
     def _get_score_from_providers(self, proposal: Proposal) -> Tuple[Decimal, dict, str]:
         """Handles AI provider call with safe fallback logic."""
         try:
-            logger.debug("Requesting AI score for proposal %s", proposal.id)
+            logger.info("Solicitando score da IA para a proposta %s", proposal.id)
             score, metadata = self._ai.request_score(proposal, timeout=self._ai_timeout)
-            logger.debug("AI score received: %s", score)
+            logger.info("Score da IA recebido para %s: %s", proposal.id, score)
             return score, metadata, "ai"
         except Exception:
             logger.warning("AI provider failed for %s, triggering fallback", proposal.id, exc_info=True)
