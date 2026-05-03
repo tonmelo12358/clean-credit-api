@@ -5,9 +5,9 @@ from typing import List, Optional
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Response, status
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
-from app.models.proposal import Proposal
+from app.models.proposal import Proposal, ProposalStatus, is_valid_cpf, clean_cpf
 from app.repositories.proposal_repository import InMemoryProposalRepository, ProposalRepository
 from app.adapters.stubs import SimpleFallbackStub
 from app.adapters.gemini_adapter import GeminiProvider # Importa o GeminiProvider
@@ -23,6 +23,19 @@ class ProposalCreate(BaseModel):
     full_name: str = Field(..., min_length=3, description="Nome completo do solicitante")
     monthly_income: Decimal = Field(..., gt=0, description="Renda mensal")
     amount_requested: Decimal = Field(..., gt=0, description="Valor solicitado")
+
+    @field_validator("cpf")
+    @classmethod
+    def validate_cpf(cls, v: str) -> str:
+        if not is_valid_cpf(v):
+            raise ValueError("CPF inválido")
+        return clean_cpf(v)
+
+
+class ProposalStatusUpdate(BaseModel):
+    status: ProposalStatus
+    note: Optional[str] = Field(None, max_length=1024, description="Nota descritiva da decisão manual")
+    score: Optional[Decimal] = Field(None, ge=0, le=1, description="Score revisado manualmente")
 
 
 # Module-level singletons used as default dependencies. In a production app
@@ -74,6 +87,24 @@ def get_proposal(proposal_id: UUID, repo: ProposalRepository = Depends(get_repos
 @router.get("/", response_model=List[Proposal])
 def list_proposals(repo: ProposalRepository = Depends(get_repository)) -> List[Proposal]:
     return repo.list_all()
+
+
+@router.patch("/{proposal_id}/status", response_model=Proposal)
+def update_proposal_status(
+    proposal_id: UUID,
+    payload: ProposalStatusUpdate,
+    service: ProposalService = Depends(get_proposal_service)
+) -> Proposal:
+    """Atualizar manualmente o status de uma proposta (ex: revisão humana)."""
+    try:
+        return service.update_proposal_status(
+            proposal_id=proposal_id,
+            status=payload.status,
+            note=payload.note,
+            score=payload.score
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
 
 
 @router.delete("/{proposal_id}", status_code=status.HTTP_204_NO_CONTENT)
