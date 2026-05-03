@@ -14,5 +14,5 @@ class SimpleFallbackStub:
     def compute(self, proposal: Proposal) -> Tuple[Decimal, dict]:
         # Regra básica: se renda > valor pedido, score favorável
         if proposal.monthly_income > proposal.amount_requested:
-            return Decimal("0.60"), {"source": "stub-fallback", "rule": "income_gt_amount"}
-        return Decimal("0.30"), {"source": "stub-fallback", "rule": "low_income"}
+            return Decimal("0.60"), {"source": "stub-fallback", "reason": "income_gt_amount"}
+        return Decimal("0.30"), {"source": "stub-fallback", "reason": "low_income_or_high_requested_amount"}
