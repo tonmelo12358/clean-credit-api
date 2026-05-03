@@ -104,4 +104,7 @@ poetry.lock
 # Pipenv
 Pipfile.lock
 
+# --- Apresentação ---
+docs/demo_script.md
+
 # Fim.

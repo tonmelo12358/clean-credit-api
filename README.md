@@ -1,7 +1,7 @@
 # CleanCredit API
 
-Motor de Avaliação de Risco de Crédito — MVP
-Versão: v0.x
+Motor de Avaliação de Risco de Crédito — Produção-Ready MVP
+Versão: v1.0.0
 
 ---
 
@@ -74,14 +74,14 @@ sequenceDiagram
   participant Client
   participant API
   participant Service
-  participant AI
+  participant Gemini
   participant Fallback
-  Client->>API: POST /score {payload}
+  Client->>API: POST /proposals/ {payload}
   API->>Service: validar e orquestrar
-  Service->>AI: solicitar score (timeout)
-  alt AI responde
-    AI-->>Service: score + explainability
-  else AI falha/timeout
+  Service->>Gemini: solicitar score (timeout)
+  alt Gemini responde
+    Gemini-->>Service: score + explainability
+  else Gemini falha/timeout
     Service->>Fallback: calcular score local
     Fallback-->>Service: score fallback
   end
@@ -96,45 +96,29 @@ sequenceDiagram
 ```
 .
 ├─ app/
-│  ├─ api/              # rotas FastAPI, validação, esquemas
-│  ├─ services/         # casos de uso, orquestração
-│  ├─ domain/           # entidades, value objects, regras
-│  ├─ repositories/     # interfaces e implementações
+│  ├─ api/              # Endpoints e DTOs (ProposalCreate, ProposalStatusUpdate)
+│  ├─ services/         # Lógica de Orquestração (ProposalService)
+│  ├─ models/           # Entidades e Regras de Negócio (Proposal)
+│  ├─ repositories/     # Persistência (InMemoryProposalRepository)
 │  ├─ adapters/         # clients externos (AI, db, cache)
-│  ├─ core/             # configurações, settings, exceptions
 │  └─ main.py           # ponto de entrada ASGI
 ├─ migrations/
 ├─ tests/
-├─ .venv/
+├─ Makefile            # Automação de workflow
 ├─ requirements.txt
 └─ README.md
 ```
 
 ---
 
-## Guia de Instalação e Configuração
+## Guia de Instalação (Reprodução Local)
 
-Pré-requisitos:
-- Python 3.11+
-- Git
-- Docker (opcional)
-
-Passos rápidos:
-
-1. Clonar o repositório
-
-```bash
-git clone <REPO_URL>
-cd <REPO_DIR>
-```
-
-2. Criar e ativar ambiente virtual
-
-macOS / Linux:
+1. **Preparar Ambiente e Dependências**:
 
 ```bash
 python3 -m venv .venv
 source .venv/bin/activate
+make install
 ```
 
 Windows (PowerShell):
@@ -144,7 +128,7 @@ python -m venv .venv
 .venv\Scripts\Activate.ps1
 ```
 
-3. Instalar dependências
+2. Instalar dependências
 
 ```bash
 pip install -r requirements.txt
@@ -167,7 +151,7 @@ ruff
 mypy
 ```
 
-4. Arquivo de ambiente (`.env`)
+3. Arquivo de ambiente (`.env`)
 
 Crie um `.env` na raiz com variáveis mínimas (exemplo):
 
@@ -175,13 +159,14 @@ Crie um `.env` na raiz com variáveis mínimas (exemplo):
 # Banco
 DATABASE_URL=sqlite:///./dev.db
 
-# AI provider
-OPENAI_API_KEY=your_api_key_here
-AI_PROVIDER_URL=https://api.openai.com/v1
+# AI provider (Google Gemini)
+GEMINI_API_KEY=your_gemini_key_here
+AI_PROVIDER_URL=https://generativelanguage.googleapis.com/v1beta
+AI_MODEL_NAME=gemini-1.5-flash
 
 # App
 FASTAPI_HOST=0.0.0.0
-FASTAPI_PORT=8000
+FASTAPI_PORT=8001
 LOG_LEVEL=INFO
 
 # Flags
@@ -189,19 +174,19 @@ ENABLE_AI=true
 FALLBACK_RULES_PATH=./config/fallback_rules.yaml
 ```
 
-5. Executar migrações (se aplicável)
+4. Executar migrações (se aplicável)
 
 ```bash
 alembic upgrade head
 ```
 
-6. Rodar localmente (desenvolvimento)
+5. Rodar localmente
 
 ```bash
-uvicorn app.main:app --host ${FASTAPI_HOST:-0.0.0.0} --port ${FASTAPI_PORT:-8000} --reload
+make run
 ```
 
-7. Endpoints de saúde e docs
+6. Endpoints de saúde e docs
 
 - Swagger UI: `GET /docs`
 - ReDoc: `GET /redoc`
@@ -295,19 +280,13 @@ black --check .
 ## Exemplos de Request (curl)
 
 ```bash
-curl -X POST http://localhost:8000/score \
+curl -X POST http://localhost:8001/proposals/ \
   -H "Content-Type: application/json" \
   -d '{
-    "applicant": {
-      "id": "123",
-      "income": 4500,
-      "age": 34,
-      "employment_status": "full_time"
-    },
-    "loan": {
-      "amount": 5000,
-      "term_months": 24
-    }
+    "cpf": "52998224725",
+    "full_name": "Wellington Melo",
+    "monthly_income": 8500.00,
+    "amount_requested": 15000.00
   }'
 ```
 
